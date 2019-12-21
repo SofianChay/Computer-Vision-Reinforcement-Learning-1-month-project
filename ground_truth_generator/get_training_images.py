@@ -32,7 +32,13 @@ def color_labels(labels):
     # tmp[labels == 0] = [255, 0, 0]
     # tmp[labels == 1] = [0, 0, 255]
     # return tmp
-    labels[labels == 1] = 50
+    labels[labels == 0] = 0
+    labels[labels == 170] = 1
+    labels[labels == 127] = 2
+    labels[labels == 255] = 3
+    labels[labels == 85] = 4
+    labels[labels == 63] = 5
+    labels[labels == 191] = 6
     return labels
 
 
@@ -42,6 +48,7 @@ game = DoomGame()
 game.load_config("scenarios/"+args.scenario)
 
 game.set_window_visible(False)
+game.set_render_hud(False)
 game.set_mode(Mode.PLAYER)
 # Enables labeling of the in game objects.
 game.set_labels_buffer_enabled(True)
@@ -78,7 +85,7 @@ if __name__ == '__main__':
             labels = state.labels_buffer
             # retrieve data :
             train_X.append(torch.from_numpy(img.reshape((1, img.shape[0], img.shape[1])).astype(np.float))) 
-            train_y.append(torch.from_numpy(color_labels(labels).reshape((1, img.shape[0], img.shape[1])).astype(np.float)))
+            train_y.append(torch.from_numpy(color_labels(labels).reshape((1, img.shape[0], img.shape[1]))))
             game.make_action(random.choice(actions))
 
 
@@ -91,11 +98,9 @@ if __name__ == '__main__':
             state = game.get_state()
             img = state.screen_buffer
             labels = state.labels_buffer
-            print(np.unique(labels))
-            print(np.unique(color_labels(labels)))
             # retrieve data :
-            data['val']['X'].append(torch.from_numpy(img.reshape((1, img.shape[0], img.shape[1])).astype(np.float)))
-            data['val']['y'].append(torch.from_numpy(color_labels(labels).reshape((1, img.shape[0], img.shape[1])).astype(np.float)))
+            data['val']['X'].append(torch.from_numpy(img.reshape((1, 1, img.shape[0], img.shape[1])).astype(np.float)))
+            data['val']['y'].append(torch.from_numpy(color_labels(labels).reshape((1, 1, img.shape[0], img.shape[1]))))
             game.make_action(random.choice(actions))
        
     game.close()
@@ -118,8 +123,8 @@ if __name__ == '__main__':
 
 
 
-    for put in ['X', 'y']:
-        data['val'][put] = torch.stack(data['val'][put])
+#    for put in ['X', 'y']:
+#        data['val'][put] = torch.stack(data['val'][put])
 
 
     # save into pickle file

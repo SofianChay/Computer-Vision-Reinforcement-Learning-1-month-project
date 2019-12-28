@@ -5,11 +5,19 @@ import torch.optim as optim
 from torch import nn
 import numpy as np
 import pickle
+import tqdm
 
+##########################
+# argments
+parser = argparse.ArgumentParser()
+parser.add_argument("--train_model", default=True, help="Type False if you want to use a pretrained model (a .pth file is necessary)", type=bool)
+parser.add_argument("--algo", default="segmentation", help="segmentation, depth_detection or optical_flow")
+args = parser.parse_args()
 
+##########################
 # gpu
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
- 
+
 #########################
 # training functions
 def training_step(model, batch_X, batch_y, criterion, optimizer, width_out, height_out, n_classes):
@@ -53,50 +61,59 @@ def train(model, criterion, optimizer, num_epochs, data, algo, width_out, height
 		val_loss = 0
 		for phase in ['train', 'val']:
 			if phase == 'train':
+				print("learning")
 				model.train()
 				for batch_X, batch_y in zip(data['train']['X'], data['train']['y']):
 					train_loss += training_step(model, batch_X, batch_y, criterion, optimizer, width_out, height_out, n_classes)
-				print(f'train loss = {train_loss / len_train} ')
+				print(f'train loss = {round(float(train_loss / len_train), 4)} ')
 			else:
+				print("validation")
 				model.eval()
 				for val_X, val_y in zip(data['val']['X'], data['val']['y']):
 					val_loss += validation_step(model, criterion, val_X, val_y, width_out, height_out, n_classes)
-				print(f'validation loss = {val_loss / len_val}')
-	torch.save(model, algo + '.pth')
+				print(f'validation loss = {round(float(val_loss / len_val), 4)}')
+	torch.save(model.state_dict(), algo + '.pth')
 	print('model saved to ' + algo + '.pth')
 ##########################
 
 
 ##########################
-# def plot_examples(model, datax, datay, num_examples):
-# 	fig, ax = plt.subplots(nrows=3, ncols=4, figsize=(18, 4*num_examples))
-# 	m = datax.shape[0]
-# 	for row_num in range(num_examples):
-# 		image_indx = np.random.randint(m)
-# 		image_arr = model(torch.from_numpy(datax[image_indx:image_indx + 1]).float().cuda()).squeeze(0).detach.cpu().numpy()
-# 		ax[row_num][0].imshow(np.transpose(datax[image_indx], (1, 2, 0))[:, :, 0]) # show input 1st channel
-# 		ax[row_num][1].imshow(np.transpose(image_arr, (1, 2, 0))[:, :, 0]) # show result of unet
-# 		ax[row_num][2].imshow(image_arr.argmax(0)) # show argmax of result of unet
-# 		ax[row_num][3].imshow(np.transpose(datay[image_indx], (1, 2, 0))[:, :, 0]) # show ground truth
-# 	plt.show()
+def plot_examples(model, datax, datay, num_examples, labels_figures):
+	model.eval()
+	fig, ax = plt.subplots(nrows=num_examples, ncols=3, figsize=(18, 4*num_examples))
+	m = len(datax)
+	for row_num in range(num_examples):
+		image_indx = np.random.randint(m)
+		image_arr = model(datax[image_indx].to(device).float())
+		image_arr = image_arr.squeeze(0).detach().cpu().numpy()
+		ax[row_num][0].imshow(datax[image_indx][0, 0, :, :])  # show input 1st channel
+		ax[row_num][1].imshow(decode(image_arr.argmax(0), labels_figures))  # show argmax of result of unet
+		ax[row_num][2].imshow(decode(datay[image_indx][0, 0, :, :], labels_figures))  # show ground truth
+	plt.show()
+    
+def decode(output, labels_figures):
+    for i in range(len(labels_figures)):
+        output[output == i] = labels_figures[i]
+    return output
 #########################
 
 
 #########################
 def main():
 	# data
+	print("loading data")
 	data = pickle.load(open('../ground_truth_generator/data', 'rb'))
+	labels_figures = pickle.load(open('../ground_truth_generator/labels_figures', 'rb'))
 	width_in = data['val']['X'][0].shape[2]
 	height_in = data['val']['X'][0].shape[3]
 	print(f'input size : {height_in}, {width_in}')
 	width_out = data['val']['y'][0].shape[2]
 	height_out = data['val']['y'][0].shape[3]
 	print(f'output size : {height_out}, {width_out}')
-	n_classes = 7
-	print(np.unique(data['val']['y'][0]))
+	n_classes = len(labels_figures)
 	print(f'number of objects to identify : {n_classes}')
 	# parameters
-	num_epochs = 2
+	num_epochs = 4
 	# model
 	in_channel =  1 # 1 if gray scale, 3 if RGB
 	out_channel = n_classes # number of segments  (depends on the environment) should be len(np.unique(labels))
@@ -107,9 +124,15 @@ def main():
 	# optimizer
 	optimizer = torch.optim.SGD(model.parameters(), lr = 0.01, momentum=0.99)
 	# algo
-	algo = 'segmentation'
 	# train
-	train(model, criterion, optimizer, num_epochs, data, algo, width_out, height_out, n_classes)
+	if args.train_model:    
+		train(model, criterion, optimizer, num_epochs, data, args.algo, width_out, height_out, n_classes)
+	else:
+		print('loading pre-trained model...')
+		state_dict = torch.load(args.algo + '.pth')        
+		model.load_state_dict(state_dict)
+	print("showing examples :")
+	plot_examples(model, data['val']['X'], data['val']['y'], 5, labels_figures)
 
 
 if __name__ == '__main__':

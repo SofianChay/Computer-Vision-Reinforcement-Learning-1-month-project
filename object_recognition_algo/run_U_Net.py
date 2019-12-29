@@ -6,12 +6,19 @@ from torch import nn
 import numpy as np
 import pickle
 import tqdm
+from get_training_images import generate_examples
+
 
 ##########################
 # argments
 parser = argparse.ArgumentParser()
 parser.add_argument("--train_model", default=True, help="Type False if you want to use a pretrained model (a .pth file is necessary)", type=bool)
 parser.add_argument("--algo", default="segmentation", help="segmentation, depth_detection or optical_flow")
+parser.add_argument("--scenario", default='basic.cfg', help="Choose the vizdoom scenario to generate. This is a (.cfg file). default is basic.cfg")
+parser.add_argument("--visualize", default=False, help="Type True if you want to visualize examples", type=bool)
+parser.add_argument("--batch_size", default=1, help="Choose batch size", type=int)
+parser.add_argument("--episodes_train", default=10, help="Choose number of episodes to learn the model", type=int)
+parser.add_argument("--episodes_val", default=3, help="Choose number of episodes to test the model", type=int)
 args = parser.parse_args()
 
 ##########################
@@ -102,8 +109,7 @@ def decode(output, labels_figures):
 def main():
 	# data
 	print("loading data")
-	data = pickle.load(open('../ground_truth_generator/data', 'rb'))
-	labels_figures = pickle.load(open('../ground_truth_generator/labels_figures', 'rb'))
+	data, label_figures = generate_examples(args.scenario, args.visualize, args.batch_size, args.episodes_train, args.episodes_val)
 	width_in = data['val']['X'][0].shape[2]
 	height_in = data['val']['X'][0].shape[3]
 	print(f'input size : {height_in}, {width_in}')

@@ -36,7 +36,7 @@ def training_step(model, batch_X, batch_y, criterion, optimizer, width_out, heig
 		outputs = outputs.permute(0, 2, 3, 1)
 		# outputs.shape = (batch_size, n_classes, img_cols, img_rows)
 		m = outputs.shape[0]      
-		outputs = outputs.view(m*width_out*height_out, n_classes)
+		outputs = outputs.contiguous().view(m*width_out*height_out, n_classes)
 		# outputs.shape =(batch_size, img_cols, img_rows, n_classes)
 		truths = truths.view(m*width_out*height_out)
 		loss = criterion(outputs, truths.long())
@@ -80,8 +80,8 @@ def train(model, criterion, optimizer, num_epochs, data, algo, width_out, height
 					for val_X, val_y in zip(data['val']['X'], data['val']['y']):
 						val_loss += validation_step(model, criterion, val_X, val_y, width_out, height_out, n_classes)
 					print(f'validation loss = {round(float(val_loss / len_val), 4)}') 
-	torch.save(model.state_dict(), algo + '.pth')
-	print('model saved to ' + algo + '.pth')
+	# torch.save(model.state_dict(), algo + '.pth')
+	# print('model saved to ' + algo + '.pth')
 ##########################
 
 

@@ -1,0 +1,2 @@
+model_checkpoint_path: "predictor.model-0"
+all_model_checkpoint_paths: "predictor.model-0"

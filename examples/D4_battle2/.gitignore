@@ -2,3 +2,4 @@ outputvideo_*
 _vizdoom*
 checkpoints
 logs
+.pynb*

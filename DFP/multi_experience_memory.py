@@ -240,7 +240,7 @@ class MultiExperienceMemory:
         return data
         
     def train_vision_model(self):
-        indices = np.random.randint(self.capacity, size=1000)
+        indices = np.random.randint(self.capacity, size=5000)
         state_images = self._images[indices]
         state_labels = self._labels[indices]
         data = self.build_data(state_images, state_labels)
@@ -252,7 +252,7 @@ class MultiExperienceMemory:
         width_out = data['train']['y'][0].shape[2]
         height_out = data['train']['y'][0].shape[3]
         n_classes = 6
-        run_UNet.train(self.model, criterion, optimizer, 2, data, "segmentation", width_out, height_out, 6, 0) # 0 means no validation step
+        run_UNet.train(self.model, criterion, optimizer, 10, data, "segmentation", width_out, height_out, 6, 0) # 0 means no validation step
     
     def vision_algo(self, state_images):
 #        concat = list()
@@ -283,8 +283,9 @@ class MultiExperienceMemory:
         """util to write the videos"""
         tensor = state_image.reshape(1, 1, self.img_shape[1], self.img_shape[2])
         tensor = torch.from_numpy(tensor)
+        tensor = tensor.to(self.device).float()
         segmentation = self.model(tensor)
-        segmentation = segmentation.squeeze(0).detach().cpu().numpy().argmax(1)
+        segmentation = segmentation.squeeze(0).detach().cpu().numpy().argmax(0)
         return segmentation
 ###############################################################################################################
 

@@ -15,7 +15,7 @@ from tqdm import tqdm, tnrange
 
 class Agent:
 
-    def __init__(self, sess, args):
+    def __init__(self, sess, args, ground_truth, vision):
         '''Agent - powered by neural nets, can infer, act, train, test.
         #####################################################################################
         Able to train the vision models
@@ -24,7 +24,10 @@ class Agent:
         self.sess = sess
         
         ######################################################################################
+        self.ground_truth = ground_truth
         self.train_vision_model_every = args['train_vision_model_every']
+        self.vision = vision
+        self.write_video_every = args["write_video_every"]
         ######################################################################################
         # input data properties
         self.state_imgs_shape = args['state_imgs_shape']
@@ -158,7 +161,11 @@ class Agent:
         # prepare the data
 
 #############################################################################################
-        self.input_images = tf.placeholder(tf.float32, [None] + [self.state_imgs_shape[1], self.state_imgs_shape[2], self.state_imgs_shape[0] + 1],
+        if self.vision:
+            self.input_images = tf.placeholder(tf.float32, [None] + [self.state_imgs_shape[1], self.state_imgs_shape[2], self.state_imgs_shape[0] + 1],
+                                    name='input_images')
+        else:
+            self.input_images = tf.placeholder(tf.float32, [None] + [self.state_imgs_shape[1], self.state_imgs_shape[2], self.state_imgs_shape[0]],
                                     name='input_images')
 #############################################################################################
         self.input_measurements = tf.placeholder(tf.float32, [None] + list(self.state_meas_shape),
@@ -299,7 +306,7 @@ class Agent:
         
         def random_actions(self, num_samples):
             return self.agent.random_actions(num_samples)
-    ###
+
     
     def get_actor(self, objective_coeffs=None, random_prob=1., random_objective_coeffs=False):
         return Agent.Actor(self, objective_coeffs, random_prob, random_objective_coeffs)
@@ -340,7 +347,10 @@ class Agent:
         
     def train(self, simulator, experience, num_steps, test_policy_experience=None):
         # load the model if available and initialize variables
+    ##################################################################################################################
+    # get the results
         rwrd_dict = {"total_avg_meas": list(), "total_avg_rwrd": list()}
+    ##################################################################################################################
         if self.init_model:
             if self.load(self.init_model, init=True):
                 print('Loaded a model from', self.init_model)
@@ -368,15 +378,17 @@ class Agent:
         for _ in range(num_steps): 
 ######################################################################################################
             # train the vision model every x steps :
-            if np.mod(self.curr_step, self.train_vision_model_every) == 0:
+            if np.mod(self.curr_step, self.train_vision_model_every) == 0 and not(self.ground_truth) and self.vision:
                 experience.train_vision_model()
 ######################################################################################################
+
             if np.mod(self.curr_step, self.checkpoint_every) == 0:
                 self.save(self.checkpoint_dir, self.curr_step)
             if self.test_policy_every and np.mod(self.curr_step, self.test_policy_every) == 0:
                 self.test_policy(simulator, test_policy_experience, self.objective_coeffs, self.num_steps_per_policy_test, rwrd_dict=rwrd_dict, random_prob=0., write_summary=True)
             
             self.train_one_batch(experience)
+            
 
             if np.mod(self.curr_step, self.add_experiences_every) == 0:
                 self.train_actor.random_prob = self.random_exploration_schedule(self.curr_step)
@@ -395,7 +407,8 @@ class Agent:
         actor = self.get_actor(objective_coeffs=objective_coeffs, random_prob=random_prob, random_objective_coeffs=False)
         experience.add_n_steps_with_actor(simulator, num_steps, actor, verbose=True, write_predictions=write_predictions, write_logs=True, global_step=self.curr_step*self.batch_size)
 ########################################################################
-        total_avg_meas, total_avg_rwrd = experience.compute_avg_meas_and_rwrd(0, num_steps*simulator.num_simulators)
+        write_video = (np.mod(self.curr_step, self.write_video_every) == 0)
+        total_avg_meas, total_avg_rwrd = experience.compute_avg_meas_and_rwrd(0, num_steps*simulator.num_simulators, write_video, self.curr_step)
         rwrd_dict["total_avg_meas"].append(total_avg_meas)
         rwrd_dict["total_avg_rwrd"].append(total_avg_rwrd)
 ########################################################################

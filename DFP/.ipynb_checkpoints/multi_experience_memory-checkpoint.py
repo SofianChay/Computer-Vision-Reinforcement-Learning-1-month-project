@@ -10,14 +10,16 @@ from matplotlib import gridspec
 import time
 import os
 from . import util as my_util
-from . import run_UNet 
+from vision_utils import run_UNet 
 from tqdm import tqdm, tnrange
 import torch
 from torch import nn
+import skvideo.io
+from vision_utils.labels_encoding import labels_to_rgb
 
 class MultiExperienceMemory:
 #####################################################################################################
-    def __init__(self, args, multi_simulator = None, target_maker = None, model=None, ground_truth=False, labels={}):
+    def __init__(self, args, multi_simulator = None, target_maker = None, model=None, ground_truth=False, vision=True):
 #####################################################################################################
         ''' Initialize emtpy experience dataset. 
             Assumptions:
@@ -47,9 +49,9 @@ class MultiExperienceMemory:
         ###############################################################################
         self.model = model
         self.ground_truth = ground_truth
-        self.labels = labels
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(self.device)
+        self.vision = vision
         ###############################################################################
         
         # initialize dataset
@@ -60,7 +62,8 @@ class MultiExperienceMemory:
     def reset(self):
         self._images = my_util.make_array(shape=(self.capacity,) + self.img_shape, dtype=np.uint8, shared=self.shared, fill_val=0) 
 #####################################################################################################
-        self._labels = my_util.make_array(shape=(self.capacity,) + (self.img_shape[1], self.img_shape[2]), dtype=np.uint8, shared=self.shared, fill_val=0)
+        if self.vision:
+            self._labels = my_util.make_array(shape=(self.capacity,) + (self.img_shape[1], self.img_shape[2]), dtype=np.uint8, shared=self.shared, fill_val=0)
 ######################################################################################################
         self._measurements =  my_util.make_array(shape=(self.capacity,) + self.meas_shape, dtype=np.float32, shared=self.shared, fill_val=0.) 
         self._rewards =  my_util.make_array(shape=(self.capacity,), dtype=np.float32, shared=self.shared, fill_val=0.)  
@@ -89,7 +92,8 @@ class MultiExperienceMemory:
 
         self._images[self._curr_indices] = imgs
 ############################################################################################################
-        self._labels[self._curr_indices] = labels
+        if self.vision:
+            self._labels[self._curr_indices] = labels
 ############################################################################################################
         self._measurements[self._curr_indices] = meass
         self._rewards[self._curr_indices] = rwrds
@@ -132,7 +136,6 @@ class MultiExperienceMemory:
     def add_step(self, multi_simulator, acts = None, objs=None, preds=None):
         if acts == None:
             acts = multi_simulator.get_random_actions()
-        # SOFIAN NOTE : multisimulator.step returns img, #LABELS#, meas (health), rwrd, term 
         self.add(*(multi_simulator.step(acts) +  (acts,objs,preds)))
         
     def add_n_steps_with_actor(self, multi_simulator, num_steps, actor, verbose=False, write_predictions=False, write_logs = False, global_step=0):
@@ -214,18 +217,12 @@ class MultiExperienceMemory:
     def ground_truth_concatenate(self, state_imgs, state_labels):
         cat = list()
         for state_image, state_label in zip(state_imgs, state_labels):
-            state_label = self.encode(state_label, self.labels)
             state_label = state_label.reshape(state_label.shape[0], state_label.shape[1], 1)
             state_image = state_image / 255 - 0.5
             cat.append(np.concatenate((state_image, state_label), 2))
         return np.array(cat)
     
-    def encode(self, labels, labels_figures):
-        labels[~np.isin(labels,[pair[0] for pair in labels_figures.values()])] = len(labels_figures)
-        for pair in labels_figures.values():
-            labels[labels == pair[0]] = pair[1]
-        return labels
-    
+
     def build_data(self, state_images, state_labels):
         print("building dataset for vision algo training...")
         batch_size = 1
@@ -235,7 +232,7 @@ class MultiExperienceMemory:
             batch_y = list()
             for j in range(batch_size):
                 batch_X.append(torch.from_numpy(state_images[i*batch_size + j].reshape(1, state_images[0].shape[1], state_images[0].shape[2])))
-                batch_y.append(torch.from_numpy(self.encode(state_labels[i*batch_size + j], self.labels).reshape(1, state_images[0].shape[1], state_images[0].shape[2])))
+                batch_y.append(torch.from_numpy(state_labels[i*batch_size + j]).reshape(1, state_images[0].shape[1], state_images[0].shape[2]))
             batch_X = torch.stack(batch_X)
             batch_y = torch.stack(batch_y)
             data['train']['X'].append(batch_X)
@@ -243,7 +240,7 @@ class MultiExperienceMemory:
         return data
         
     def train_vision_model(self):
-        indices = np.random.randint(self.capacity, size=1000)
+        indices = np.random.randint(self.capacity, size=5000)
         state_images = self._images[indices]
         state_labels = self._labels[indices]
         data = self.build_data(state_images, state_labels)
@@ -254,8 +251,8 @@ class MultiExperienceMemory:
         # update the model on 2 epochs
         width_out = data['train']['y'][0].shape[2]
         height_out = data['train']['y'][0].shape[3]
-        n_classes = len(self.labels) + 1
-        run_UNet.train(self.model, criterion, optimizer, 2, data, "segmentation", width_out, height_out, n_classes, 0) # 0 means no validation step
+        n_classes = 6
+        run_UNet.train(self.model, criterion, optimizer, 10, data, "segmentation", width_out, height_out, 6, 0) # 0 means no validation step
     
     def vision_algo(self, state_images):
 #        concat = list()
@@ -281,6 +278,15 @@ class MultiExperienceMemory:
         state_images = state_images / 255 - 0.5
         concat = np.concatenate((state_images, segmentation), 1)
         return np.transpose(concat, (0, 2, 3, 1))
+
+    def vision_algo_video(self, state_image):
+        """util to write the videos"""
+        tensor = state_image.reshape(1, 1, self.img_shape[1], self.img_shape[2])
+        tensor = torch.from_numpy(tensor)
+        tensor = tensor.to(self.device).float()
+        segmentation = self.model(tensor)
+        segmentation = segmentation.squeeze(0).detach().cpu().numpy().argmax(0)
+        return segmentation
 ###############################################################################################################
 
     def get_states(self, indices):
@@ -293,15 +299,17 @@ class MultiExperienceMemory:
         state_imgs = np.transpose(np.reshape(np.take(self._images, frames, axis=0), (len(indices),) + self.state_imgs_shape), [0,2,3,1]).astype(np.float32)
         state_meas = np.reshape(np.take(self._measurements, frames, axis=0), (len(indices),) + self.state_meas_shape).astype(np.float32)
         ###########################################################################
-        if self.ground_truth:
+        if self.ground_truth and self.vision:
             state_labels = np.transpose(np.reshape(np.take(self._labels, frames, axis=0), (len(indices),) + self.state_imgs_shape), [0,2,3,1]).astype(np.float32)
             # concatenate images and groud truth labels 
-            cat = self.ground_truth_concatenate(state_imgs, state_labels)
-        else:
+            state_imgs = self.ground_truth_concatenate(state_imgs, state_labels)
+        elif not(self.ground_truth) and self.vision:
             # concatenate images and model predictions
-            cat = self.vision_algo(state_imgs)
+            state_imgs = self.vision_algo(state_imgs)
+        else:
+            state_imgs = state_imgs / 255 - 0.5
         ###########################################################################
-        return cat, state_meas
+        return state_imgs, state_meas
             
     def get_current_state(self):
         '''  Return most recent observation sequence '''
@@ -357,9 +365,13 @@ class MultiExperienceMemory:
 
         # create batch
         return self.get_observations(np.array(samples))
-    
-    def compute_avg_meas_and_rwrd(self, start_idx, end_idx):
+
+  
+    def compute_avg_meas_and_rwrd(self, start_idx, end_idx, write_video, iteration):
         # compute average measurement values per episode, and average cumulative reward per episode
+        ####################################################################################################
+        # write videos during training to obseve the evoluation of agent's behavior qualitatively.
+        ####################################################################################################
         curr_num_obs = 0.
         curr_sum_meas = self._measurements[0] * 0
         curr_sum_rwrd = self._rewards[0] * 0
@@ -386,9 +398,37 @@ class MultiExperienceMemory:
         else:
             total_avg_meas = total_sum_meas / num_episodes
             total_avg_rwrd = total_sum_rwrd / num_episodes
-        
+
+#################################################################################################################
+        # write the video of some episodes (from the first simulator)
+        if write_video:
+            gray_scale_vid = skvideo.io.FFmpegWriter(f"outputvideo_{iteration}.mp4", outputdict={'-r': '6'})
+            if self.vision:
+                segmented_vid = skvideo.io.FFmpegWriter(f"outputvideo_segmentation_{iteration}.mp4", outputdict={'-r': '6', '-pix_fmt': 'yuv420p'})
+            index = 0
+            nbr_episodes = 0
+            while True:
+                frame = self._images[index].reshape(1, self.img_shape[1], self.img_shape[2]).astype(np.uint8)
+                if self.vision:
+                    if self.ground_truth:
+                        label_frame = self._labels[index]
+                    else:
+                        label_frame = self.vision_algo_video(frame)
+                    label_frame = labels_to_rgb(label_frame)
+                    segmented_vid.writeFrame(label_frame)
+                index += 1
+                gray_scale_vid.writeFrame(frame)
+                if self._terminals[index]:
+                    nbr_episodes += 1
+                if index == self.capacity or nbr_episodes == 2 or index == int(self.capacity / self.num_heads):
+                    break
+            if self.vision:
+                segmented_vid.close()
+            gray_scale_vid.close()
+##################################################################################################################
+
         return total_avg_meas, total_avg_rwrd
-            
+######################################################################################################################           
             
     def show(self, start_index=0, end_index=None, display=True, write_imgs=False, write_video = False, preprocess_targets=None, show_predictions=0, net_discrete_actions = []):
         if show_predictions:
@@ -397,11 +437,12 @@ class MultiExperienceMemory:
         if not end_index:
             end_index = start_index
         inp = ''
-        if write_imgs:
+        if write_imgs:  
             os.makedirs('imgs')
             prev_time = time.time()
         if write_video:
             print(self.img_shape)
+
             vw = VideoWriter('vid.avi', (self.img_shape[2],self.img_shape[1]), framerate=24, rgb=(self.img_shape[0]==3), mode='replace')
         print('Press ENTER to go to the next observation, type "quit" or "q" or "exit" and press ENTER to quit')
 

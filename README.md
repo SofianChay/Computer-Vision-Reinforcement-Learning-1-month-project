@@ -25,6 +25,7 @@ The usual paradigm in RL is composed of an **agent** (e.g : player) interacting 
 This approach might not be adapted to learning sensorimotor control from raw sensory input in three-dimensional environments. Indeed scalar rewards are unable to describe completely multi-dimensional environments. Instead of this, we should rather focus on the **measurements** provided to the agents (e.g : the number of frags and the health).
 
 ## Direct Future Prediction
+> Figure taken from the presentation of [1] at ICLR 2017
 ![Direct Future Prediction](https://user-images.githubusercontent.com/58939729/72206075-fee7f600-3489-11ea-86a3-0a21df49528a.png) 
 
 The approach developed by [1] is **Future supervised learning**. The goal is to predict measurements available to the agent. For this purpose, it is assumed that the rewards can be expressed as (linear) function of measurements. In this configuration, the role of the agent is to predict the future measurements (at multiple future time steps) implied by each possible action based on raw input, and present measurements. From each future measurements, the expected reward is deduced.   

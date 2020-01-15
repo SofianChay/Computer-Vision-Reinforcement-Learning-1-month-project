@@ -128,12 +128,12 @@ $ cd examples/D3_battle
 ```
 $ python run_exp.py
 ```  
-> To run without with predicted intermediate representations 
+> To run with predicted intermediate representations 
 ```
 $ python run_exp.py --vision 1 
 ```
 
-> To run without with groundtruth intermediate representations 
+> To run with groundtruth intermediate representations 
 ```
 $ python run_exp.py --vision 1 --groundtruth 1
 ```

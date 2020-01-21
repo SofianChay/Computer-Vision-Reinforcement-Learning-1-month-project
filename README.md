@@ -10,6 +10,10 @@ The experiments are conducted on the FPS game **Doom** through the AI Researh Pl
 ![outputvideo_depth_30000_vision_True_groundtruth_True](https://user-images.githubusercontent.com/58939729/72359519-b54c1500-36ee-11ea-81ff-6c2528edf551.gif)
 ![outputvideo_segmentation_30000_vision_True_groundtruth_True](https://user-images.githubusercontent.com/58939729/72359520-b5e4ab80-36ee-11ea-9e3c-0e5cde6b6999.gif)
 
+## Aknowledgements 
+
+Before  beginning  the  description  of  the  core  issues,  I have to acknowledge the work of [3].  In this paper, similar experiments are described and the main ideas inspired me and helped me to understand the problematic and what I had to do to solve it.
+
 
 # Standard Reinforcement Learning Approach vs Direct Future Prediction Approach
 
@@ -191,15 +195,18 @@ The following table summurizes the parameters of the experiments :
 
 ## Results for the agent trained without intermediate representations 
 ![vision_False_ground_truth_False_frags](https://user-images.githubusercontent.com/58939729/72359729-17a51580-36ef-11ea-9f98-519c1b689e2f.png)
-![vision_False_ground_truth_False_rewards](https://user-images.githubusercontent.com/58939729/72359730-17a51580-36ef-11ea-9879-ad3b6e901557.png)
+
 
 ## Results for the agent trained with groundtruth depth detection and segmentation
 ![vision_True_ground_truth_True_frags](https://user-images.githubusercontent.com/58939729/72359749-2095e700-36ef-11ea-8f68-59066e5e3038.png)
-![vision_True_ground_truth_True_rewards](https://user-images.githubusercontent.com/58939729/72359752-2095e700-36ef-11ea-9cc9-9706197ebda5.png)
+
 
 ## Results for the agent trained with predicted depth detection and segmentation
 ![vision_True_ground_truth_False_frags](https://user-images.githubusercontent.com/58939729/72765877-e3e65600-3bee-11ea-9892-32bf87a0d784.png)
-![vision_True_ground_truth_False_rewards](https://user-images.githubusercontent.com/58939729/72765910-155f2180-3bef-11ea-94c2-3c8fe962fe4c.png)
+
+## Result combined 
+![final_results_without_std](https://user-images.githubusercontent.com/58939729/72814170-e2f00b80-3c64-11ea-9851-f3f80ed9b946.png)
+![final_results_with_std](https://user-images.githubusercontent.com/58939729/72814171-e2f00b80-3c64-11ea-942d-65bb9e6b7213.png)
 
 
 ## Observations 

@@ -193,12 +193,14 @@ The following table summurizes the parameters of the experiments :
 ![vision_False_ground_truth_False_frags](https://user-images.githubusercontent.com/58939729/72359729-17a51580-36ef-11ea-9f98-519c1b689e2f.png)
 ![vision_False_ground_truth_False_rewards](https://user-images.githubusercontent.com/58939729/72359730-17a51580-36ef-11ea-9879-ad3b6e901557.png)
 
-## Results for the agent trained with predicted depth detection and segmentation
+## Results for the agent trained with groundtruth depth detection and segmentation
 ![vision_True_ground_truth_True_frags](https://user-images.githubusercontent.com/58939729/72359749-2095e700-36ef-11ea-8f68-59066e5e3038.png)
 ![vision_True_ground_truth_True_rewards](https://user-images.githubusercontent.com/58939729/72359752-2095e700-36ef-11ea-9cc9-9706197ebda5.png)
 
 ## Results for the agent trained with predicted depth detection and segmentation
-**soon**
+![vision_True_ground_truth_False_frags](https://user-images.githubusercontent.com/58939729/72765877-e3e65600-3bee-11ea-9892-32bf87a0d784.png)
+![vision_True_ground_truth_False_rewards](https://user-images.githubusercontent.com/58939729/72765910-155f2180-3bef-11ea-94c2-3c8fe962fe4c.png)
+
 
 ## Observations 
 
@@ -214,7 +216,7 @@ The following table summurizes the quantitative results of the experiments :
 |:--------------------:|:---------------------:|:-----------------------:|
 |No vision             |Max : 10.5; Mean : 6.75|Max : 18; Mean : 11.25   |
 |Vision and Groundtruth|Max : 12; Mean : 8.20  |Max : 20.25; Mean : 14.05|
-|Vision and predictions|Max : ?; Mean : ?      |Max : ?; Mean : ?        |
+|Vision and predictions|Max : 13.20; Mean : ?      |Max : 21.10; Mean : ?        |
 
 
 

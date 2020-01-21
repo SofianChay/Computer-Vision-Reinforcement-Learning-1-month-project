@@ -219,11 +219,11 @@ We can make several comments from the observation of the figures above. Comparin
 ## Summary :
 The following table summurizes the quantitative results of the experiments :  
 
-|                      | Frags                 | Rewards                 |
-|:--------------------:|:---------------------:|:-----------------------:|
-|No vision             |Max : 10.5; Mean : 6.75|Max : 18; Mean : 11.25   |
-|Vision and Groundtruth|Max : 12; Mean : 8.20  |Max : 20.25; Mean : 14.05|
-|Vision and predictions|Max : 13.20; Mean : ?      |Max : 21.10; Mean : ?        |
+|                      | Frags                 |
+|:--------------------:|:---------------------:|
+|No vision             |Max : 10.5; Mean : 6.75|
+|Vision and Groundtruth|Max : 12; Mean : 8.20  |
+|Vision and predictions|Max : 13.20; Mean : 7.82|
 
 
 

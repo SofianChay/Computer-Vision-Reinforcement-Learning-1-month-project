@@ -174,7 +174,7 @@ The evaluation of the agent is done multiple time during training : each 1000 mi
 
 ## Parameters 
 
-The following table summurizes the parameters of the experiments :  
+The following table summarizes the parameters of the experiments :  
 
 | Parameter            | Value                 |
 |:--------------------:|:---------------------:|
@@ -217,7 +217,7 @@ We can make several comments from the observation of the figures above. Comparin
 * Learning is more stable : we observe less oscillation when using vision. Learning is smoother.
 
 ## Summary :
-The following table summurizes the quantitative results of the experiments :  
+The following table summarizes the quantitative results of the experiments :  
 
 |                      | Frags                 |
 |:--------------------:|:---------------------:|
